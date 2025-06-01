@@ -1,19 +1,28 @@
 use rand::prelude::*;
 
-const ALL_CHARACTERS: [&str; 90] = [
-    "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s",
-    "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L",
-    "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "!", "#", "$", "%", "&",
-    "(", ")", "*", "+", ",", "-", ".", "/", ":", ";", "<", "=", ">", "?", "@", "[", "]", "^", "_",
-    "{", "|", "}", "~", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
-];
+// https://cs.android.com/android-studio/platform/tools/adt/idea/+/mirror-goog-studio-main:android-adb/src/com/android/tools/idea/adb/wireless/WiFiPairingServiceImpl.kt;l=1;bpv=0
+const ALL_CHARACTERS: &[u8] =
+    b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-+*/<>{}";
 
 pub fn generate() -> String {
     let mut rng = rand::rng();
-    (0..20)
+    let data = (0..20)
         .map(|_| {
             let idx = rng.random_range(0..ALL_CHARACTERS.len());
             ALL_CHARACTERS[idx]
         })
-        .collect()
+        .collect::<Vec<_>>();
+
+    unsafe { String::from_utf8_unchecked(data) }
+}
+
+#[cfg(test)]
+mod test {
+
+    #[test]
+    fn test_generate() {
+        let password = super::generate();
+        println!("Generated password: {}", password);
+        assert_eq!(password.len(), 20);
+    }
 }

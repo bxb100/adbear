@@ -3,6 +3,7 @@ mod password;
 mod scanning;
 
 use mdns_sd::ServiceDaemon;
+use regex_lite::Regex;
 use std::env;
 use std::process::Output;
 
@@ -24,16 +25,35 @@ async fn main() {
     let port = info.get_port();
     let addresses = info.get_addresses_v4();
     let ip = addresses.iter().next().unwrap();
-    match adb_commands::pair(ip, port, &password) {
-        Ok(Output { status, .. }) if status.success() => {}
+    let guid = match adb_commands::pair(ip, port, &password) {
+        Ok(Output { status, stdout, .. }) if status.success() => {
+            let result = unsafe { String::from_utf8_unchecked(stdout) };
+            println!("{result}");
+
+            let line = result.lines().next().unwrap();
+            // eg. Successfully paired to 192.168.1.86:41915 [guid=adb-939AX05XBZ-vWgJpq]
+            let line_regex =
+                Regex::new(r"Successfully paired to ([^:]*):([0-9]*) \[guid=([^]]*)]").unwrap();
+            line_regex.captures(line).and_then(|caps| {
+                let guid = caps.get(3)?.as_str().to_owned();
+                Some(guid)
+            })
+        }
         _ => {
             // https://stackoverflow.com/questions/33316006/adb-error-error-protocol-fault-couldnt-read-status-invalid-argument
-            println!("Failed to pair, maybe need restart adb server")
+            panic!("Failed to pair, maybe need restart adb server");
         }
-    }
+    };
 
-    if let Ok(infos) = scanning::find_connection_service(&mdns).await {
-        for (name, info) in infos.iter() {
+    if let Ok(infos) = scanning::find_connection_service(&mdns, guid).await {
+        for entry in infos.iter() {
+            let (name, info) = entry.pair();
+            println!(
+                "Found service: {} at port {}",
+                info.get_fullname(),
+                info.get_port()
+            );
+
             let port = info.get_port();
             let addresses = info.get_addresses_v4();
             let ip = addresses.iter().next().unwrap();
@@ -47,8 +67,10 @@ async fn main() {
                         "Connected to {device_name}",
                         device_name = String::from_utf8_lossy(&output.stdout)
                     );
+                    continue;
                 }
             }
+            println!("Failed to connect {name}");
         }
     }
 

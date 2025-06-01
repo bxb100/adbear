@@ -9,7 +9,7 @@ pub fn pair(ip: &Ipv4Addr, port: u16, password: &str) -> io::Result<Output> {
         .arg("pair")
         .arg(format!("{ip}:{port}"))
         .arg(password)
-        .stdout(Stdio::inherit())
+        .stdout(Stdio::piped())
         .stderr(Stdio::inherit())
         .output()
 }
