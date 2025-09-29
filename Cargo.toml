@@ -22,7 +22,7 @@ path = "src/main.rs"
 anyhow = "1.0.89"
 dashmap = "6.1.0"
 fast_qr = "0.13.0"
-mdns-sd = { version = "0.13.0", default-features = false, features = ["async"] }
+mdns-sd = { version = "0.15.0", default-features = false, features = ["async"] }
 rand = "0.9.0"
 regex-lite = "0.1.6"
 tokio = { version = "1.40.0", features = ["macros", "rt-multi-thread", "time"] }

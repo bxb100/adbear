@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 use dashmap::DashMap;
-use mdns_sd::{ServiceDaemon, ServiceEvent, ServiceInfo};
+use mdns_sd::{ResolvedService, ServiceDaemon, ServiceEvent};
 use std::time::Duration;
 use tokio::time::{sleep, timeout};
 
@@ -10,8 +10,8 @@ const MDNS_PAIRING_TYPE: &str = "_adb-tls-pairing._tcp.local.";
 async fn find_mdns_service(
     mdns: &ServiceDaemon,
     service_type: &str,
-    is_match: impl Fn(&ServiceInfo) -> bool,
-) -> Option<ServiceInfo> {
+    is_match: impl Fn(&Box<ResolvedService>) -> bool,
+) -> Option<Box<ResolvedService>> {
     let receiver = mdns.browse(service_type).expect("Failed to browse");
 
     while let Ok(event) = receiver.recv_async().await {
@@ -27,7 +27,7 @@ async fn find_mdns_service(
 pub async fn find_pairing_service(
     mdns: &ServiceDaemon,
     identifier: &str,
-) -> anyhow::Result<ServiceInfo> {
+) -> anyhow::Result<Box<ResolvedService>> {
     let service_type = MDNS_PAIRING_TYPE.to_string();
 
     match timeout(
@@ -47,8 +47,8 @@ pub async fn find_pairing_service(
 pub async fn find_connection_service(
     mdns: &ServiceDaemon,
     guid: Option<String>,
-) -> anyhow::Result<DashMap<String, ServiceInfo>> {
-    let map = DashMap::<String, ServiceInfo>::new();
+) -> anyhow::Result<DashMap<String, Box<ResolvedService>>> {
+    let map = DashMap::new();
     let task = async {
         let receiver = mdns.browse(MDNS_SCAN_TYPE).expect("Failed to browse");
         while let Ok(event) = receiver.recv_async().await {
