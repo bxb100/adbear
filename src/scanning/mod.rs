@@ -3,6 +3,7 @@ use if_addrs::get_if_addrs;
 use mdns_sd::{ResolvedService, ServiceDaemon, ServiceEvent};
 use std::collections::HashSet;
 use std::net::Ipv4Addr;
+use std::sync::mpsc::Sender;
 use std::time::Duration;
 use tokio::time::timeout;
 
@@ -52,19 +53,23 @@ pub async fn find_pairing_service(
 
 pub async fn find_connection_service(
     mdns: &ServiceDaemon,
-    identifier: &str,
-) -> anyhow::Result<Box<ResolvedService>> {
-    let expected_prefix = format!("{identifier}.");
-
+    tx: Sender<ResolvedService>,
+) -> anyhow::Result<()> {
     match timeout(
         Duration::from_secs(30),
         find_mdns_service(mdns, MDNS_SCAN_TYPE, |info| {
-            info.get_fullname().starts_with(&expected_prefix)
+            println!(
+                "Found connection service: {:?}:{}",
+                info.get_addresses_v4(),
+                info.get_port()
+            );
+            let _ = tx.send(info.clone());
+            false
         }),
     )
     .await
     {
-        Ok(Some(info)) => Ok(info),
+        Ok(Some(_)) => Ok(()),
         Ok(None) => Err(anyhow!("Device not found")),
         Err(_) => Err(anyhow!("Timeout waiting for connection service")),
     }
